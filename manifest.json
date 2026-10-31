@@ -1,7 +1,8 @@
 {
   "name": "Control PWA Demo",
   "short_name": "PWA Demo",
-  "start_url": "index.html",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f3f4f6",
   "theme_color": "#2563eb",

@@ -1,19 +1,12 @@
-// Definimos una interfaz limpia para los artefactos
-interface Artefacto {
-    id: number;
-    nombre: string;
-    estado: 'Operativo' | 'En Revisión' | 'Inactivo';
-}
-
-// Datos de ejemplo
-const artefactos: Artefacto[] = [
+// Datos de ejemplo para el control de artefactos
+const artefactos = [
     { id: 1, nombre: 'Sensor de Presión A1', estado: 'Operativo' },
     { id: 2, nombre: 'Módulo de Control B2', estado: 'En Revisión' },
     { id: 3, nombre: 'Gateway IoT Principal', estado: 'Operativo' }
 ];
 
-// Función para mostrar la fecha actual
-function mostrarFecha(): void {
+// Función para mostrar la fecha actual en el calendario rápido
+function mostrarFecha() {
     const contenedorFecha = document.getElementById('fecha-actual');
     if (contenedorFecha) {
         const hoy = new Date();
@@ -26,8 +19,8 @@ function mostrarFecha(): void {
     }
 }
 
-// Función para renderizar los artefactos en el HTML
-function renderizarArtefactos(): void {
+// Función para renderizar los artefactos en la interfaz
+function renderizarArtefactos() {
     const lista = document.getElementById('lista-artefactos');
     if (!lista) return;
 
@@ -46,7 +39,7 @@ function renderizarArtefactos(): void {
     });
 }
 
-// Inicializar al cargar
+// Inicializar al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
     mostrarFecha();
     renderizarArtefactos();

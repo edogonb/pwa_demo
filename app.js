@@ -386,15 +386,39 @@ async function iniciarCamara() {
 function detenerCamara() {
     const modal = document.getElementById('modal-camara');
     const video = document.getElementById('video-feed');
+
+    // 1. Apagar todos los tracks del stream activo
     if (streamCamaraActivo) {
-        streamCamaraActivo.getTracks().forEach(track => track.stop());
+        streamCamaraActivo.getTracks().forEach(track => {
+            try {
+                // Si el dispositivo encendió linterna/torch, apagarla primero
+                if (track.applyConstraints && track.getCapabilities && track.getCapabilities().torch) {
+                    track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+                }
+                track.stop();
+            } catch (_) {}
+        });
         streamCamaraActivo = null;
     }
-    if (video) video.srcObject = null;
+
+    // 2. Apagar tracks remanentes en el elemento video si existieran
+    if (video) {
+        try {
+            video.pause();
+            if (video.srcObject && video.srcObject.getTracks) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        } catch (_) {}
+        video.srcObject = null;
+    }
+
+    // 3. Ocultar modal
     if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
     }
+
+    logHardware('Sensor de cámara y luz/flash apagados completamente.', 'info');
 }
 
 // 2. Geolocalización con Verificación de Permisos

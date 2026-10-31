@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi PWA de Control</title>
+    <!-- Tailwind CSS para diseño rápido y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vinculación del Manifiesto PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-between p-4">
+
+    <!-- Encabezado -->
+    <header class="w-full max-w-md bg-blue-600 text-white p-4 rounded-xl shadow-md text-center">
+        <h1 class="text-xl font-bold">Control de Artefactos & Agenda</h1>
+        <p class="text-xs text-blue-100">Versión PWA Móvil/PC</p>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="w-full max-w-md my-4 space-y-4">
+        
+        <!-- Sección Calendario / Fecha -->
+        <div class="bg-white p-4 rounded-xl shadow-md">
+            <h2 class="text-gray-700 font-semibold mb-2">📅 Calendario Rápido</h2>
+            <p id="fecha-actual" class="text-sm text-gray-500">Cargando fecha...</p>
+        </div>
+
+        <!-- Sección Control de Artefactos -->
+        <div class="bg-white p-4 rounded-xl shadow-md">
+            <h2 class="text-gray-700 font-semibold mb-2">📦 Artefactos Registrados</h2>
+            <ul id="lista-artefactos" class="divide-y divide-gray-200 text-sm">
+                <!-- Se llena con TypeScript -->
+            </ul>
+        </div>
+
+    </main>
+
+    <!-- Pie / Botón de Acción -->
+    <footer class="w-full max-w-md text-center text-xs text-gray-400 pb-2">
+        PWA creada para demostración por WhatsApp.
+    </footer>
+
+    <!-- Lógica en TypeScript (compilada o cargada) -->
+    <script type="module" src="app.ts"></script>
+
+    <!-- Registro del Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
+                    .catch(err => console.log('Error al registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

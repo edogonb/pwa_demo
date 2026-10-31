@@ -12,24 +12,166 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-between p-4">
 
-    <!-- Encabezado -->
-    <header class="w-full max-w-md bg-blue-600 text-white p-4 rounded-xl shadow-md text-center">
-        <h1 class="text-xl font-bold">Control de Artefactos & Agenda</h1>
-        <p class="text-xs text-blue-100">Versión PWA Móvil/PC</p>
+    <!-- Encabezado con estado de conexión e instalación -->
+    <header class="w-full max-w-md bg-blue-600 text-white p-4 rounded-xl shadow-md">
+        <div class="flex items-center justify-between mb-1">
+            <span id="badge-network" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-white border border-emerald-300/40">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="network-text">Online</span>
+            </span>
+            <button id="btn-install-pwa" class="hidden text-xs bg-white text-blue-600 hover:bg-blue-50 font-bold px-2.5 py-1 rounded-lg shadow-sm transition items-center gap-1">
+                📥 Instalar App
+            </button>
+        </div>
+        <h1 class="text-xl font-bold text-center">Control de Artefactos & Flota</h1>
+        <p class="text-xs text-blue-100 text-center">PWA Nativo Demo - Rendimiento & Hardware</p>
     </header>
 
     <!-- Contenido Principal -->
     <main class="w-full max-w-md my-4 space-y-4">
         
-        <!-- Sección Calendario / Fecha -->
+        <!-- Sección Calendario Mensual Interactivo -->
         <div class="bg-white p-4 rounded-xl shadow-md">
-            <h2 class="text-gray-700 font-semibold mb-2">📅 Calendario Rápido</h2>
-            <p id="fecha-actual" class="text-sm text-gray-500">Cargando fecha...</p>
+            <div class="flex items-center justify-between mb-3">
+                <button id="btn-mes-ant" class="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Mes anterior">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div class="text-center">
+                    <h2 id="mes-año-label" class="font-bold text-gray-800 capitalize text-sm">Mes Año</h2>
+                    <p id="fecha-hoy-sub" class="text-xs text-blue-600 cursor-pointer hover:underline font-medium">Hoy</p>
+                </div>
+                <button id="btn-mes-sig" class="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Mes siguiente">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+
+            <!-- Cabecera de días de la semana -->
+            <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-400 mb-2">
+                <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span class="text-blue-500">Sá</span><span class="text-blue-500">Do</span>
+            </div>
+
+            <!-- Rejilla de días generada por JS -->
+            <div id="grid-dias" class="grid grid-cols-7 gap-1 text-center text-xs">
+                <!-- Se inyecta dinámicamente -->
+            </div>
+
+            <!-- Eventos o detalles del día seleccionado -->
+            <div id="panel-eventos-dia" class="mt-4 pt-3 border-t border-gray-100">
+                <div class="flex justify-between items-center mb-1">
+                    <span id="label-dia-seleccionado" class="text-xs font-semibold text-gray-700">Eventos de hoy:</span>
+                    <span id="badge-total-eventos" class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">0 eventos</span>
+                </div>
+                <ul id="lista-eventos-dia" class="space-y-1.5 text-xs text-gray-600 mt-2">
+                    <!-- Se llena según el día seleccionado -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sección Selección de Vehículo -->
+        <div class="bg-white p-4 rounded-xl shadow-md">
+            <label for="select-carros" class="block text-gray-700 font-semibold mb-2">🚗 Selección de Vehículo</label>
+            <select id="select-carros" name="carro" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                <option value="" disabled selected>Selecciona un auto...</option>
+                <option value="Auto 01">Auto 01</option>
+                <option value="Auto 02">Auto 02</option>
+                <option value="Auto 03">Auto 03</option>
+                <option value="Auto 04">Auto 04</option>
+                <option value="Auto 05">Auto 05</option>
+                <option value="Auto 06">Auto 06</option>
+                <option value="Auto 07">Auto 07</option>
+                <option value="Auto 08">Auto 08</option>
+                <option value="Auto 09">Auto 09</option>
+                <option value="Auto 10">Auto 10</option>
+                <option value="Auto 11">Auto 11</option>
+                <option value="Auto 12">Auto 12</option>
+                <option value="Auto 13">Auto 13</option>
+                <option value="Auto 14">Auto 14</option>
+                <option value="Auto 15">Auto 15</option>
+            </select>
+        </div>
+
+        <!-- Sección Kit Demostrativo de Hardware PWA -->
+        <div class="bg-white p-4 rounded-xl shadow-md border-2 border-blue-500/20">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-gray-800 font-bold flex items-center gap-1.5 text-sm">
+                    ⚡ Kit de Potencia Nativa (PWA)
+                </h2>
+                <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-medium border border-blue-100">
+                    Web APIs
+                </span>
+            </div>
+            <p class="text-xs text-gray-500 mb-3">
+                Funcionalidades que tradicionalmente requerían instalar una app nativa desde Play Store / App Store:
+            </p>
+
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <!-- Botón 1: Cámara / Escáner -->
+                <button id="btn-demo-camara" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border border-gray-200 rounded-lg text-gray-700 transition active:scale-95 text-center">
+                    <span class="text-xl mb-1">📷</span>
+                    <span class="font-bold text-gray-800">Cámara / QR</span>
+                    <span class="text-[10px] text-gray-400">getUserMedia API</span>
+                </button>
+
+                <!-- Botón 2: Geolocalización -->
+                <button id="btn-demo-geo" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border border-gray-200 rounded-lg text-gray-700 transition active:scale-95 text-center">
+                    <span class="text-xl mb-1">📍</span>
+                    <span class="font-bold text-gray-800">Geolocalización</span>
+                    <span class="text-[10px] text-gray-400">GPS del celular</span>
+                </button>
+
+                <!-- Botón 3: Vibración Háptica -->
+                <button id="btn-demo-vibrate" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border border-gray-200 rounded-lg text-gray-700 transition active:scale-95 text-center">
+                    <span class="text-xl mb-1">📳</span>
+                    <span class="font-bold text-gray-800">Vibración Háptica</span>
+                    <span class="text-[10px] text-gray-400">Vibration API</span>
+                </button>
+
+                <!-- Botón 4: Compartir Nativo -->
+                <button id="btn-demo-share" class="flex flex-col items-center justify-center p-3 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 border border-gray-200 rounded-lg text-gray-700 transition active:scale-95 text-center">
+                    <span class="text-xl mb-1">📤</span>
+                    <span class="font-bold text-gray-800">Compartir Nativo</span>
+                    <span class="text-[10px] text-gray-400">Web Share API</span>
+                </button>
+            </div>
+
+            <!-- Botón 5: Notificación Push Local (ancho completo) -->
+            <button id="btn-demo-notify" class="w-full mt-2 py-2 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-sm">
+                <span>🔔</span> Probar Notificación Local del Sistema
+            </button>
+
+            <!-- Consola de Resultados del Hardware -->
+            <div id="hardware-console" class="mt-3 p-2.5 bg-gray-900 text-emerald-400 rounded-lg text-[11px] font-mono min-h-[40px] flex items-center justify-between border border-gray-800">
+                <span id="hardware-console-text">> Toca cualquier botón del kit para probar hardware...</span>
+            </div>
+        </div>
+
+        <!-- Modal para Visor de Cámara en Vivo -->
+        <div id="modal-camara" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4">
+            <div class="bg-white rounded-2xl overflow-hidden max-w-sm w-full shadow-2xl flex flex-col">
+                <div class="p-3 bg-gray-900 text-white flex justify-between items-center text-xs font-bold">
+                    <span>📷 Escaneo de Artefacto / Sensor</span>
+                    <button id="btn-cerrar-camara" class="text-gray-400 hover:text-white p-1 text-sm font-bold">✕</button>
+                </div>
+                <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                    <video id="video-feed" autoplay playsinline class="w-full h-full object-cover"></video>
+                    <!-- Guía visual de escaneo -->
+                    <div class="absolute inset-8 border-2 border-dashed border-emerald-400/80 rounded-lg pointer-events-none animate-pulse"></div>
+                </div>
+                <div class="p-3 bg-gray-50 flex items-center justify-between text-xs text-gray-600">
+                    <span id="camara-status">Accediendo a la cámara en vivo...</span>
+                    <button id="btn-capturar-foto" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-blue-700">Capturar</button>
+                </div>
+            </div>
         </div>
 
         <!-- Sección Control de Artefactos -->
         <div class="bg-white p-4 rounded-xl shadow-md">
-            <h2 class="text-gray-700 font-semibold mb-2">📦 Artefactos Registrados</h2>
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-gray-700 font-semibold">📦 Artefactos Registrados</h2>
+                <button id="btn-nuevo-artefacto" class="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded hover:bg-blue-100 transition">
+                    + Registrar
+                </button>
+            </div>
             <ul id="lista-artefactos" class="divide-y divide-gray-200 text-sm">
                 <!-- Se llena con TypeScript -->
             </ul>
@@ -42,8 +184,9 @@
         PWA creada para demostración por WhatsApp.
     </footer>
 
+
     <!-- Lógica en TypeScript (compilada o cargada) -->
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.ts"></script>
 
     <!-- Registro del Service Worker -->
     <script>

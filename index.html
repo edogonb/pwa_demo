@@ -100,9 +100,20 @@
                     Web APIs
                 </span>
             </div>
-            <p class="text-xs text-gray-500 mb-3">
+            <p class="text-xs text-gray-500 mb-2">
                 Funcionalidades que tradicionalmente requerían instalar una app nativa desde Play Store / App Store:
             </p>
+
+            <!-- Barra de estado y solicitud proactiva de permisos -->
+            <div class="bg-blue-50/80 border border-blue-200/80 rounded-lg p-2.5 mb-3 flex items-center justify-between">
+                <div class="text-[11px] text-blue-900">
+                    <span class="font-bold block">🛡️ Permisos del Dispositivo:</span>
+                    <span id="resumen-permisos" class="text-[10px] text-blue-700">Comprobando permisos...</span>
+                </div>
+                <button id="btn-pedir-todos-permisos" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-semibold transition shadow-sm active:scale-95 flex items-center gap-1">
+                    <span>✨</span> Habilitar Todo
+                </button>
+            </div>
 
             <div class="grid grid-cols-2 gap-2 text-xs">
                 <!-- Botón 1: Cámara / Escáner -->
@@ -160,6 +171,37 @@
                 <div class="p-3 bg-gray-50 flex items-center justify-between text-xs text-gray-600">
                     <span id="camara-status">Accediendo a la cámara en vivo...</span>
                     <button id="btn-capturar-foto" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-blue-700">Capturar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Visual de Advertencia de Permisos Requeridos -->
+        <div id="modal-permiso" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4">
+            <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl border border-amber-200 animate-in fade-in zoom-in-95 duration-200">
+                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl" id="permiso-modal-icon">
+                    ⚠️
+                </div>
+                <h3 id="permiso-modal-titulo" class="text-base font-bold text-gray-900 text-center mb-1">
+                    Permiso Requerido
+                </h3>
+                <p id="permiso-modal-desc" class="text-xs text-gray-600 text-center mb-4 leading-relaxed">
+                    Esta función necesita acceso al hardware de tu dispositivo.
+                </p>
+                <div class="bg-amber-50 p-3 rounded-lg border border-amber-200 mb-4 text-[11px] text-amber-800 space-y-1">
+                    <p class="font-semibold flex items-center gap-1">
+                        <span>💡</span> ¿Cómo solucionarlo si fue bloqueado?
+                    </p>
+                    <p id="permiso-modal-instruccion" class="text-amber-700">
+                        Toca el candado 🔒 en la barra de direcciones de tu navegador y cambia el permiso a "Permitir".
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-cerrar-modal-permiso" class="flex-1 py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold transition">
+                        Entendido
+                    </button>
+                    <button id="btn-reintentar-permiso" class="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition shadow-sm">
+                        Solicitar de nuevo
+                    </button>
                 </div>
             </div>
         </div>

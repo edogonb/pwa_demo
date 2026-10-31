@@ -240,35 +240,146 @@ function renderizarArtefactos() {
 }
 
 // -------------------------------------------------------------
-// FUNCIONES DEL KIT DE HARDWARE
+// SISTEMA DE GESTIÓN Y ADVERTENCIA DE PERMISOS
 // -------------------------------------------------------------
-async function iniciarCamara() {
-    const modal = document.getElementById('modal-camara');
-    const video = document.getElementById('video-feed');
-    const status = document.getElementById('camara-status');
-    if (!modal || !video) return;
+let accionReintentoPermiso = null;
+
+async function actualizarResumenPermisos() {
+    const resumenEl = document.getElementById('resumen-permisos');
+    if (!resumenEl) return;
+
+    let estadoNotif = ('Notification' in window) ? Notification.permission : 'no soportado';
+    let estadoGeo = 'desconocido';
+    let estadoCam = 'desconocido';
+
+    if (navigator.permissions && navigator.permissions.query) {
+        try {
+            const g = await navigator.permissions.query({ name: 'geolocation' });
+            estadoGeo = g.state;
+            g.onchange = () => actualizarResumenPermisos();
+        } catch (_) {}
+
+        try {
+            const c = await navigator.permissions.query({ name: 'camera' });
+            estadoCam = c.state;
+            c.onchange = () => actualizarResumenPermisos();
+        } catch (_) {}
+    }
+
+    const formatearEstado = (est) => {
+        if (est === 'granted') return '<span class="text-emerald-600 font-bold">✓</span>';
+        if (est === 'denied') return '<span class="text-rose-600 font-bold">✕</span>';
+        return '<span class="text-gray-400">?</span>';
+    };
+
+    resumenEl.innerHTML = `📷 Cámara: ${formatearEstado(estadoCam)} | 📍 GPS: ${formatearEstado(estadoGeo)} | 🔔 Notif: ${formatearEstado(estadoNotif)}`;
+}
+
+function mostrarAdvertenciaPermiso(opciones) {
+    const modal = document.getElementById('modal-permiso');
+    const icono = document.getElementById('permiso-modal-icon');
+    const titulo = document.getElementById('permiso-modal-titulo');
+    const desc = document.getElementById('permiso-modal-desc');
+    const instruccion = document.getElementById('permiso-modal-instruccion');
+    if (!modal || !titulo || !desc) return;
+
+    if (icono) icono.textContent = opciones.icono || '⚠️';
+    titulo.textContent = opciones.titulo || 'Permiso Requerido';
+    desc.textContent = opciones.mensaje || 'Esta función requiere un permiso de hardware para funcionar.';
+    if (instruccion) {
+        instruccion.innerHTML = opciones.instruccion || 'Toca el ícono del candado o ajustes del sitio 🔒 en la barra de tu navegador y activa este permiso.';
+    }
+
+    accionReintentoPermiso = opciones.alReintentar || null;
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    if (status) status.textContent = 'Iniciando sensor de cámara...';
+    if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
+}
+
+function cerrarAdvertenciaPermiso() {
+    const modal = document.getElementById('modal-permiso');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+// -------------------------------------------------------------
+// FUNCIONES DEL KIT DE HARDWARE CON CONTROL DE PERMISOS
+// -------------------------------------------------------------
+
+// 1. Cámara y Escáner en Vivo con Verificación de Permiso
+async function iniciarCamara() {
+    const modalCamara = document.getElementById('modal-camara');
+    const video = document.getElementById('video-feed');
+    const status = document.getElementById('camara-status');
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        mostrarAdvertenciaPermiso({
+            icono: '📷',
+            titulo: 'Cámara No Disponible',
+            mensaje: 'Tu navegador o entorno actual no soporta acceso directo a la cámara.',
+            instruccion: 'Asegúrate de acceder mediante <strong>HTTPS</strong> o desde un navegador compatible (Chrome, Safari, Edge).'
+        });
+        return;
+    }
+
+    // Consultar estado previo de permiso si la Permissions API lo soporta
+    if (navigator.permissions && navigator.permissions.query) {
+        try {
+            const permisoCam = await navigator.permissions.query({ name: 'camera' });
+            if (permisoCam.state === 'denied') {
+                mostrarAdvertenciaPermiso({
+                    icono: '📷',
+                    titulo: 'Permiso de Cámara Denegado',
+                    mensaje: 'Has bloqueado el acceso a la cámara para esta aplicación.',
+                    instruccion: 'En tu navegador, ve a <strong>Ajustes del Sitio > Cámara</strong> y cambia la opción a <strong>Permitir</strong>.',
+                    alReintentar: () => iniciarCamara()
+                });
+                return;
+            }
+        } catch (_) {
+            // Algunos navegadores no implementan query de cámara, continuamos con getUserMedia
+        }
+    }
+
+    modalCamara?.classList.remove('hidden');
+    modalCamara?.classList.add('flex');
+    if (status) status.textContent = 'Solicitando acceso al sensor de cámara...';
 
     try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Cámara no soportada en este entorno.');
-        }
-
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' }
         });
 
         streamCamaraActivo = stream;
-        video.srcObject = stream;
-        video.play();
-        if (status) status.textContent = 'Cámara activa (PWA WebRTC).';
-        logHardware('Cámara conectada vía getUserMedia API', 'exito');
+        if (video) {
+            video.srcObject = stream;
+            video.play();
+        }
+        if (status) status.textContent = 'Cámara activa (PWA WebRTC). Apunta al artefacto.';
+        logHardware('Acceso a cámara concedido vía getUserMedia', 'exito');
     } catch (err) {
-        if (status) status.textContent = 'Acceso a cámara denegado o no disponible.';
-        logHardware(`Error de cámara: ${err.message || 'Denegado'}`, 'error');
+        detenerCamara();
+        logHardware(`Error/Denegación de cámara: ${err.name || err.message}`, 'error');
+
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            mostrarAdvertenciaPermiso({
+                icono: '📷',
+                titulo: 'Permiso de Cámara Bloqueado',
+                mensaje: 'Para escanear códigos o artefactos, la PWA necesita permiso para usar la cámara.',
+                instruccion: 'Haz clic en el candado 🔒 junto a la URL en tu navegador, cambia <strong>Cámara</strong> a <strong>Permitir</strong> y vuelve a intentar.',
+                alReintentar: () => iniciarCamara()
+            });
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            mostrarAdvertenciaPermiso({
+                icono: '📷',
+                titulo: 'Cámara No Encontrada',
+                mensaje: 'No se detectó ningún dispositivo de cámara conectado.',
+                instruccion: 'Verifica que la cámara no esté siendo utilizada por otra aplicación.'
+            });
+        }
     }
 }
 
@@ -286,41 +397,86 @@ function detenerCamara() {
     }
 }
 
-function obtenerGeolocalizacion() {
+// 2. Geolocalización con Verificación de Permisos
+async function obtenerGeolocalizacion() {
     if (!('geolocation' in navigator)) {
-        logHardware('Geolocalización no soportada.', 'error');
+        mostrarAdvertenciaPermiso({
+            icono: '📍',
+            titulo: 'GPS No Compatible',
+            mensaje: 'Este dispositivo o navegador no admite geolocalización satelital.',
+            instruccion: 'Prueba abriendo la PWA desde Chrome o Safari en un dispositivo móvil.'
+        });
         return;
     }
 
-    logHardware('Consultando antena GPS...');
+    if (navigator.permissions && navigator.permissions.query) {
+        try {
+            const permisoGeo = await navigator.permissions.query({ name: 'geolocation' });
+            if (permisoGeo.state === 'denied') {
+                mostrarAdvertenciaPermiso({
+                    icono: '📍',
+                    titulo: 'Permiso de Ubicación Denegado',
+                    mensaje: 'El navegador tiene bloqueado el acceso a tu posición GPS.',
+                    instruccion: 'Toca el candado 🔒 en la barra superior > <strong>Ubicación > Permitir</strong>.',
+                    alReintentar: () => obtenerGeolocalizacion()
+                });
+                return;
+            }
+        } catch (_) {}
+    }
+
+    logHardware('Solicitando coordenadas a la antena GPS...');
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             const lat = pos.coords.latitude.toFixed(5);
             const lng = pos.coords.longitude.toFixed(5);
             const precision = Math.round(pos.coords.accuracy);
-            logHardware(`GPS: ${lat}, ${lng} (±${precision}m)`, 'exito');
+            logHardware(`GPS Concedido: ${lat}, ${lng} (±${precision}m)`, 'exito');
             if ('vibrate' in navigator) navigator.vibrate([40, 60, 40]);
         },
         (err) => {
-            logHardware(`Error GPS: ${err.message}`, 'error');
+            logHardware(`Fallo GPS: ${err.message}`, 'error');
+            if (err.code === err.PERMISSION_DENIED) {
+                mostrarAdvertenciaPermiso({
+                    icono: '📍',
+                    titulo: 'Permiso de GPS Denegado',
+                    mensaje: 'No se pudo obtener la posición del vehículo porque rechazaste el permiso de ubicación.',
+                    instruccion: 'Activa la ubicación en los permisos del navegador o en los ajustes de privacidad de tu móvil.',
+                    alReintentar: () => obtenerGeolocalizacion()
+                });
+            } else if (err.code === err.POSITION_UNAVAILABLE) {
+                mostrarAdvertenciaPermiso({
+                    icono: '🛰️',
+                    titulo: 'Señal GPS Débil',
+                    mensaje: 'El GPS no pudo fijar tus coordenadas en este momento.',
+                    instruccion: 'Asegúrate de tener encendido el GPS de tu celular y una señal despejada.'
+                });
+            }
         },
         { enableHighAccuracy: true, timeout: 8000 }
     );
 }
 
+// 3. Vibración Háptica
 function dispararVibracion() {
     if ('vibrate' in navigator) {
         const ok = navigator.vibrate([80, 50, 120]);
         if (ok) {
             logHardware('Vibración háptica ejecutada [80ms, 50ms, 120ms]', 'exito');
         } else {
-            logHardware('Vibración no permitida o no disponible en este dispositivo.', 'error');
+            logHardware('Vibración omitida (restringida por el SO)', 'info');
         }
     } else {
-        logHardware('Vibration API no disponible.', 'error');
+        mostrarAdvertenciaPermiso({
+            icono: '📳',
+            titulo: 'Vibración No Soportada',
+            mensaje: 'La API de vibración táctil solo funciona en dispositivos móviles (Android/iOS compatibles).',
+            instruccion: 'En computadoras de escritorio esta función no cuenta con motor de vibración físico.'
+        });
     }
 }
 
+// 4. Compartir Nativo (Web Share API)
 async function compartirNativo() {
     const vehiculoActual = document.getElementById('select-carros')?.value || 'Sin vehículo';
     const totalOps = artefactos.filter(a => a.estado === 'Operativo').length;
@@ -343,45 +499,69 @@ async function compartirNativo() {
     } else {
         try {
             await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}`);
-            logHardware('Copiado al portapapeles (Web Share no disponible).', 'info');
+            logHardware('Texto copiado al portapapeles (Web Share no soportado)', 'info');
+            alert('¡Enlace y reporte copiados al portapapeles listo para pegar en WhatsApp!');
         } catch {
             logHardware('No se pudo compartir.', 'error');
         }
     }
 }
 
+// 5. Notificación Local del Sistema con Control de Permisos
 async function dispararNotificacion() {
     if (!('Notification' in window)) {
-        logHardware('Notificaciones no soportadas en este navegador.', 'error');
+        mostrarAdvertenciaPermiso({
+            icono: '🔔',
+            titulo: 'Notificaciones No Soportadas',
+            mensaje: 'Tu navegador no cuenta con soporte para Notificaciones Web.',
+            instruccion: 'Asegúrate de estar utilizando una versión actualizada de Chrome, Safari (iOS 16.4+) o Edge.'
+        });
         return;
     }
 
-    try {
-        let permiso = Notification.permission;
-        if (permiso !== 'granted') {
-            permiso = await Notification.requestPermission();
-        }
+    let permiso = Notification.permission;
 
-        if (permiso === 'granted') {
-            const vehiculoActual = document.getElementById('select-carros')?.value || 'Flota';
-            
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                const reg = await navigator.serviceWorker.ready;
-                reg.showNotification('Alerta de Flota PWA', {
-                    body: `Recordatorio: Revisión programada para ${vehiculoActual} en fecha ${diaSeleccionado}`
-                });
-            } else {
-                new Notification('Alerta de Flota PWA', {
-                    body: `Revisión programada para ${vehiculoActual} (${diaSeleccionado})`
-                });
-            }
-            logHardware('Notificación de sistema emitida.', 'exito');
-            if ('vibrate' in navigator) navigator.vibrate(60);
+    if (permiso === 'denied') {
+        mostrarAdvertenciaPermiso({
+            icono: '🔕',
+            titulo: 'Notificaciones Bloqueadas',
+            mensaje: 'Has bloqueado las notificaciones para este sitio web.',
+            instruccion: 'Para recibir alertas de revisiones, pulsa el candado 🔒 en la barra de URL > <strong>Notificaciones > Permitir</strong>.',
+            alReintentar: () => dispararNotificacion()
+        });
+        logHardware('Permiso de notificaciones previamente denegado', 'error');
+        return;
+    }
+
+    if (permiso !== 'granted') {
+        logHardware('Solicitando autorización de notificaciones...');
+        permiso = await Notification.requestPermission();
+    }
+
+    if (permiso === 'granted') {
+        const vehiculoActual = document.getElementById('select-carros')?.value || 'Flota';
+        
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            const reg = await navigator.serviceWorker.ready;
+            reg.showNotification('Alerta de Flota PWA', {
+                body: `Recordatorio: Revisión programada para ${vehiculoActual} en fecha ${diaSeleccionado}`
+            });
         } else {
-            logHardware('Permiso de notificaciones denegado.', 'error');
+            new Notification('Alerta de Flota PWA', {
+                body: `Revisión programada para ${vehiculoActual} (${diaSeleccionado})`
+            });
         }
-    } catch (err) {
-        logHardware(`Error de notificación: ${err.message}`, 'error');
+        logHardware('Notificación de sistema emitida.', 'exito');
+        if ('vibrate' in navigator) navigator.vibrate(60);
+    } else {
+        mostrarAdvertenciaPermiso({
+            icono: '🔕',
+            titulo: 'Permiso Denegado',
+            mensaje: 'No podremos enviarte recordatorios de agenda sin este permiso.',
+            instruccion: 'Puedes volver a activarlo en cualquier momento desde los ajustes de privacidad del navegador.',
+            alReintentar: () => dispararNotificacion()
+        });
+        logHardware('Permiso de notificación denegado por el usuario', 'error');
     }
 }
 
@@ -443,6 +623,9 @@ document.addEventListener('DOMContentLoaded', () => {
         logHardware('Calendario restablecido a la fecha actual', 'info');
     });
 
+    // Actualizar estado de permisos
+    actualizarResumenPermisos();
+
     // Filtro por vehículo
     const selectAuto = document.getElementById('select-carros');
     selectAuto?.addEventListener('change', (e) => {
@@ -450,6 +633,38 @@ document.addEventListener('DOMContentLoaded', () => {
         autoFiltro = target.value || null;
         renderizarCalendario();
         logHardware(`Vehículo: ${target.value || 'Todos'}`, 'info');
+    });
+
+    // Botón proactivo "Habilitar Todo" (Onboarding de Permisos)
+    document.getElementById('btn-pedir-todos-permisos')?.addEventListener('click', async () => {
+        logHardware('Iniciando asistente de permisos del dispositivo...', 'info');
+        
+        // 1. Notificaciones
+        if ('Notification' in window && Notification.permission === 'default') {
+            await Notification.requestPermission();
+        }
+
+        // 2. Geolocalización
+        if ('geolocation' in navigator) {
+            await new Promise(resolve => {
+                navigator.geolocation.getCurrentPosition(
+                    () => resolve(true),
+                    () => resolve(false),
+                    { timeout: 4000 }
+                );
+            });
+        }
+
+        // 3. Cámara
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach(t => t.stop()); // apagar de inmediato tras conceder
+            } catch (_) {}
+        }
+
+        await actualizarResumenPermisos();
+        logHardware('Permisos verificados. El dispositivo está listo.', 'exito');
     });
 
     // Botones del Kit de Hardware
@@ -480,6 +695,15 @@ document.addEventListener('DOMContentLoaded', () => {
             renderizarArtefactos();
             if ('vibrate' in navigator) navigator.vibrate(40);
             logHardware(`Artefacto guardado localmente: "${nuevo.nombre}"`, 'exito');
+        }
+    });
+
+    // Botones del Modal de Permisos Denegados / Advertencia
+    document.getElementById('btn-cerrar-modal-permiso')?.addEventListener('click', cerrarAdvertenciaPermiso);
+    document.getElementById('btn-reintentar-permiso')?.addEventListener('click', () => {
+        cerrarAdvertenciaPermiso();
+        if (typeof accionReintentoPermiso === 'function') {
+            accionReintentoPermiso();
         }
     });
 
